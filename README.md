@@ -2,7 +2,7 @@
 
 A free browser game. Pick a name and a position (QB, RB, WR or TE), then choose from three random offers from the top 50 college programs. Sim your college seasons, declare for the draft, and land on an NFL team. From there it's your call: re-sign, chase a ring in free agency, request a trade, or retire. When you hang it up, you get a shareable career card with your draft slot, earnings, rings, awards and career stats.
 
-**Play:** _add the Vercel link here once it's deployed_
+**Play:** https://nfl-career-sim.vercel.app
 
 ## How the project is laid out
 

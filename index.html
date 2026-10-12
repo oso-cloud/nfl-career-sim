@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Pick a position and a college, play out your college career, get drafted, then chase rings, sign contracts and decide when to retire.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><ellipse cx='50' cy='50' rx='44' ry='28' fill='%238a4b1c' transform='rotate(-35 50 50)'/><path d='M36 64 64 36M44 50l6 6M50 44l6 6M38 56l6 6' stroke='white' stroke-width='5'/></svg>">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Gridiron Career Sim</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: turf-striped masthead, then a sticky player card beside the main board; stacks to one column on phones */
+:root{
+  --bg:#edf0e8; --surface:#fbfcf8; --surface-2:#e2e8dc; --ink:#15221a; --muted:#59695e; --line:#cdd6c8;
+  --field:#1c6640; --field-2:#20714a; --field-ink:#f3f7f0; --accent:#b97a12; --accent-soft:#f3e3c3;
+  --good:#277a45; --bad:#b0412c; --good-soft:#d8ecdc; --bad-soft:#f4dcd6;
+  --f-display:"Saira Condensed","Arial Narrow",sans-serif;
+  --f-body:"Source Sans 3",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1612; --surface:#15201a; --surface-2:#1c2a22; --ink:#e7eee5; --muted:#93a497; --line:#2a3b31;
+  --field:#123f28; --field-2:#15472d; --field-ink:#eef4ec; --accent:#e2a63e; --accent-soft:#3a2f1a;
+  --good:#5cbf7f; --bad:#e2735c; --good-soft:#1d3a27; --bad-soft:#3d221d; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0e1612; --surface:#15201a; --surface-2:#1c2a22; --ink:#e7eee5; --muted:#93a497; --line:#2a3b31;
+  --field:#123f28; --field-2:#15472d; --field-ink:#eef4ec; --accent:#e2a63e; --accent-soft:#3a2f1a;
+  --good:#5cbf7f; --bad:#e2735c; --good-soft:#1d3a27; --bad-soft:#3d221d; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.05;letter-spacing:.01em}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px}
+.label{font-family:var(--f-display);font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:.78rem;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* masthead */
+.mast{background:repeating-linear-gradient(90deg,var(--field) 0 64px,var(--field-2) 64px 128px);color:var(--field-ink);position:relative;overflow:hidden}
+.mast::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 127px,rgba(255,255,255,.18) 127px 128px);pointer-events:none}
+.mast .wrap{position:relative;z-index:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding-block:18px}
+.wordmark{font-family:var(--f-display);font-weight:800;font-size:clamp(1.7rem,4vw,2.4rem);text-transform:uppercase;letter-spacing:.02em}
+.wordmark span{color:var(--accent)}
+.mast .sub{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.16em;font-size:.8rem;opacity:.85}
+.mast .btn{border-color:rgba(255,255,255,.5);color:var(--field-ink);background:transparent}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(250px,300px) minmax(0,1fr);gap:24px;padding-block:24px 48px}
+.layout.solo{grid-template-columns:minmax(0,1fr)}
+@media (max-width:860px){.layout{grid-template-columns:minmax(0,1fr)}}
+.board{display:flex;flex-direction:column;gap:20px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:20px;min-width:0}
+.panel h2{font-size:1.6rem;text-transform:uppercase}
+.panel-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:14px}
+
+/* player card */
+.pcard{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);align-self:start;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+@media (max-width:860px){.pcard{position:static}}
+.pcard-top{background:var(--field);color:var(--field-ink);padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.jersey{font-family:var(--f-display);font-weight:800;font-size:4.2rem;line-height:.85;color:var(--accent)}
+.pname{font-family:var(--f-display);font-weight:800;font-size:1.7rem;text-transform:uppercase;line-height:1}
+.ppos{font-family:var(--f-display);letter-spacing:.14em;text-transform:uppercase;font-size:.85rem;opacity:.85;margin-top:4px}
+.ovr{display:flex;align-items:baseline;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.ovr b{font-family:var(--f-display);font-size:3.2rem;font-weight:800;line-height:1}
+.grade{font-family:var(--f-display);font-weight:700;font-size:1rem;padding:2px 8px;border-radius:3px;background:var(--accent-soft);color:var(--ink)}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;padding:14px 18px;font-size:.95rem}
+.facts dt{color:var(--muted);font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-size:.8rem;padding-top:2px}
+.facts dd{margin:0;font-weight:600;min-width:0}
+.bar{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+
+/* buttons */
+.btn{font-family:var(--f-display);font-weight:700;text-transform:uppercase;letter-spacing:.08em;font-size:.95rem;padding:10px 18px;border-radius:4px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;transition:transform .08s,background .15s}
+.btn:hover{background:var(--surface-2)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,input:focus-visible,.opt:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--field);border-color:var(--field);color:var(--field-ink)}
+.btn.primary:hover{filter:brightness(1.12)}
+.btn.warn{border-color:var(--bad);color:var(--bad)}
+.btn.warn.armed{background:var(--bad);color:#fff}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+
+/* setup */
+.hero h1{font-size:clamp(2.2rem,6vw,3.6rem);text-transform:uppercase;font-weight:800}
+.hero p{max-width:60ch;color:var(--muted);font-size:1.08rem;margin:10px 0 0}
+.field{display:flex;flex-direction:column;gap:6px;max-width:420px}
+input[type=text]{font:inherit;font-size:1.1rem;padding:10px 12px;border:1.5px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.opt{text-align:left;font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:6px;padding:16px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:border-color .15s,transform .1s}
+.opt:hover{border-color:var(--field);transform:translateY(-2px)}
+.opt.sel{border-color:var(--field);box-shadow:inset 0 0 0 1.5px var(--field);background:var(--surface-2)}
+.opt .big{font-family:var(--f-display);font-weight:800;font-size:2rem;line-height:1;text-transform:uppercase}
+.opt .desc{color:var(--muted);font-size:.93rem}
+.rankno{font-family:var(--f-display);font-weight:800;color:var(--accent);font-size:1.1rem}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:.92rem;border-top:1px dashed var(--line);padding-top:6px}
+.kv span:first-child{color:var(--muted)}
+
+/* tables */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:.88rem;white-space:nowrap}
+th{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.08em;font-size:.76rem;color:var(--muted);text-align:right;padding:8px 10px;background:var(--surface-2);position:sticky;top:0}
+td{padding:7px 10px;text-align:right;border-top:1px solid var(--line);font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+th.l,td.l{text-align:left;font-family:var(--f-body)}
+th.l{font-family:var(--f-display)}
+tr.total td{font-weight:600;background:var(--surface-2)}
+.chip{display:inline-block;font-family:var(--f-display);font-weight:700;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:3px;background:var(--accent-soft);color:var(--ink);margin:1px 3px 1px 0}
+.chip.ring{background:var(--accent);color:#1b1305}
+.chip.inj{background:var(--bad-soft);color:var(--bad)}
+.role{font-family:var(--f-display);font-weight:700;text-transform:uppercase;font-size:.78rem;letter-spacing:.06em}
+.role.Starter{color:var(--good)}.role.Backup{color:var(--bad)}.role.Rotation{color:var(--accent)}
+.empty{color:var(--muted);padding:18px;text-align:center;font-style:italic}
+
+/* decision + draft */
+.decision{border:2px solid var(--accent);background:var(--surface)}
+.decision .label{color:var(--accent)}
+.draftcard{background:var(--field);color:var(--field-ink);border-radius:6px;padding:28px 24px;position:relative;overflow:hidden;animation:rise .6s ease-out both}
+.draftcard::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 79px,rgba(255,255,255,.08) 79px 80px)}
+.draftcard > *{position:relative}
+.draftcard .pickno{font-family:var(--f-display);font-weight:800;font-size:clamp(3.5rem,12vw,6.5rem);line-height:.9;color:var(--accent)}
+.draftcard h2{font-size:clamp(1.8rem,5vw,2.8rem);text-transform:uppercase;font-weight:800}
+.draftcard p{opacity:.9;max-width:60ch}
+@keyframes rise{from{transform:translateY(14px)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.news{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0;max-height:300px;overflow:auto}
+.news li{padding:8px 0;border-top:1px solid var(--line);font-size:.94rem;display:grid;grid-template-columns:3.4rem 1fr;gap:10px}
+.news li:first-child{border-top:0}
+.news .yr{font-family:var(--f-mono);color:var(--muted);font-size:.85rem;padding-top:1px}
+.trophies{display:flex;flex-wrap:wrap;gap:8px}
+.trophy{border:1px solid var(--line);border-radius:4px;padding:8px 12px;display:flex;flex-direction:column;min-width:110px}
+.trophy b{font-family:var(--f-display);font-size:1.8rem;line-height:1;font-weight:800;color:var(--accent)}
+.trophy span{font-size:.82rem;color:var(--muted)}
+.verdict{font-family:var(--f-display);font-weight:800;font-size:clamp(2rem,6vw,3.2rem);text-transform:uppercase;color:var(--accent);line-height:1}
+.sharecard{background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden;animation:rise .6s ease-out both}
+.sc-top{background:repeating-linear-gradient(90deg,var(--field) 0 64px,var(--field-2) 64px 128px);color:var(--field-ink);padding:22px 22px 20px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.sc-top > div{min-width:0}
+.sc-name{font-family:var(--f-display);font-weight:800;font-size:clamp(2.2rem,7vw,3.6rem);text-transform:uppercase;line-height:.95;overflow-wrap:anywhere}
+.sc-body{padding:20px 22px;display:flex;flex-direction:column;gap:20px}
+.sc-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px 18px;margin:0}
+.sc-facts dt{font-family:var(--f-display);text-transform:uppercase;letter-spacing:.1em;font-size:.75rem;color:var(--muted)}
+.sc-facts dd{margin:2px 0 0;font-weight:600;line-height:1.35}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.tile{background:var(--surface-2);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column}
+.tile b{font-size:1.35rem;font-weight:600;line-height:1.1}
+.tile span{font-size:.8rem;color:var(--muted)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.muted{color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="mast">
+  <div class="wrap">
+    <div>
+      <div class="wordmark">Gridiron <span>Career</span> Sim</div>
+      <div class="sub">Recruiting · College · Draft · The League</div>
+    </div>
+    <div id="mastActions"></div>
+  </div>
+</header>
+<main class="wrap"><div id="app" class="layout solo"></div></main>
+
+<script>
+/* ---------- data ---------- */
+const COLLEGES = [
+ ["Georgia","SEC",97],["Ohio State","Big Ten",97],["Alabama","SEC",96],["Texas","SEC",94],["Oregon","Big Ten",93],
+ ["Michigan","Big Ten",92],["LSU","SEC",91],["Notre Dame","Independent",91],["Penn State","Big Ten",91],["Clemson","ACC",90],
+ ["Miami","ACC",89],["USC","Big Ten",88],["Tennessee","SEC",88],["Ole Miss","SEC",88],["Oklahoma","SEC",87],
+ ["Texas A&M","SEC",87],["Indiana","Big Ten",86],["Florida State","ACC",85],["Florida","SEC",84],["Washington","Big Ten",84],
+ ["Auburn","SEC",83],["Missouri","SEC",82],["Utah","Big 12",82],["Arizona State","Big 12",82],["South Carolina","SEC",82],
+ ["Iowa","Big Ten",81],["Kansas State","Big 12",81],["BYU","Big 12",81],["Texas Tech","Big 12",81],["Wisconsin","Big Ten",80],
+ ["Louisville","ACC",80],["SMU","ACC",80],["Iowa State","Big 12",80],["Illinois","Big Ten",80],["Oklahoma State","Big 12",79],
+ ["Boise State","Mountain West",79],["Colorado","Big 12",79],["Baylor","Big 12",79],["TCU","Big 12",79],["Nebraska","Big Ten",78],
+ ["Kentucky","SEC",77],["Arkansas","SEC",77],["North Carolina","ACC",77],["Tulane","American",77],["UCLA","Big Ten",76],
+ ["Minnesota","Big Ten",76],["NC State","ACC",76],["Virginia Tech","ACC",76],["Pittsburgh","ACC",76],["Duke","ACC",76]
+].map((c,i)=>({name:c[0],conf:c[1],p:c[2],rank:i+1}));
+
+const TEAMS = {ARI:"Arizona Cardinals",ATL:"Atlanta Falcons",BAL:"Baltimore Ravens",BUF:"Buffalo Bills",CAR:"Carolina Panthers",CHI:"Chicago Bears",CIN:"Cincinnati Bengals",CLE:"Cleveland Browns",DAL:"Dallas Cowboys",DEN:"Denver Broncos",DET:"Detroit Lions",GB:"Green Bay Packers",HOU:"Houston Texans",IND:"Indianapolis Colts",JAX:"Jacksonville Jaguars",KC:"Kansas City Chiefs",LV:"Las Vegas Raiders",LAC:"Los Angeles Chargers",LAR:"Los Angeles Rams",MIA:"Miami Dolphins",MIN:"Minnesota Vikings",NE:"New England Patriots",NO:"New Orleans Saints",NYG:"New York Giants",NYJ:"New York Jets",PHI:"Philadelphia Eagles",PIT:"Pittsburgh Steelers",SF:"San Francisco 49ers",SEA:"Seattle Seahawks",TB:"Tampa Bay Buccaneers",TEN:"Tennessee Titans",WAS:"Washington Commanders"};
+const TEAM_KEYS = Object.keys(TEAMS);
+
+const POS = {
+ QB:{name:"Quarterback",blurb:"Highest ceiling, biggest contracts. Wins and MVPs run through you.",nums:[1,19],decline:34,maxPay:55},
+ RB:{name:"Running Back",blurb:"Instant impact and early stardom, but the shortest shelf life.",nums:[20,39],decline:28,maxPay:16},
+ WR:{name:"Wide Receiver",blurb:"Big-play production and a long prime if you stay healthy.",nums:[10,19],decline:31,maxPay:36},
+ TE:{name:"Tight End",blurb:"Blocks, catches, lasts. A slower climb with a long career.",nums:[80,89],decline:31,maxPay:20}
+};
+const STAT_COLS = {
+ QB:[["CMP","cmp"],["ATT","att"],["YDS","yds"],["TD","td"],["INT","int"],["RUSH","ryds"],["RTD","rtd"]],
+ RB:[["CAR","car"],["YDS","yds"],["TD","td"],["REC","rec"],["RECYDS","recyds"],["RECTD","rectd"]],
+ WR:[["TGT","tgt"],["REC","rec"],["YDS","yds"],["TD","td"]],
+ TE:[["TGT","tgt"],["REC","rec"],["YDS","yds"],["TD","td"]]
+};
+
+/* ---------- helpers ---------- */
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const ri=(a,b)=>Math.floor(rnd(a,b+1));
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const sig=x=>1/(1+Math.exp(-x));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const money=m=>m>=1?`$${m.toFixed(m>=10?0:1)}M`:`$${Math.round(m*1000)}K`;
+const ord=n=>n+(["th","st","nd","rd"][(n%100-20)%10]||["th","st","nd","rd"][n%100]||"th");
+function grade(o){return o>=95?"A+":o>=90?"A":o>=85?"A-":o>=80?"B+":o>=76?"B":o>=72?"B-":o>=68?"C+":o>=64?"C":o>=60?"C-":"D"}
+
+/* ---------- state ---------- */
+const SAVE_KEY="gridiron-career-v1";
+let S = null;
+let uiArmed = null; // which destructive button is armed
+let setupPos = "WR";
+let setupName = "";
+let SHARED = null; // a career summary opened from a share link
+const ARTIFACT_URL = "https://claude.ai/artifact/EAyMJXZTT9hewMq87crsQg";
+// On a real website (Vercel, localhost) share links point at that site; inside Claude they point at the artifact.
+const IS_HOSTED = /^https?:$/.test(location.protocol) && !/claude/i.test(location.hostname);
+const SHARE_BASE = IS_HOSTED ? location.origin + location.pathname : ARTIFACT_URL;
+function save(){try{localStorage.setItem(SAVE_KEY,JSON.stringify(S))}catch(e){}}
+function load(){try{const v=localStorage.getItem(SAVE_KEY);return v?JSON.parse(v):null}catch(e){return null}}
+function wipe(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
+function news(text){S.news.unshift({yr:S.year,text})}
+
+function newCareer(name,pos){
+  const ovr=ri(58,70);
+  S={phase:"recruit",name:name||"Rookie",pos,ovr,pot:clamp(ovr+ri(14,32),74,99),age:18,year:2026,
+     num:ri(POS[pos].nums[0],POS[pos].nums[1]),stars:ovr>=68?5:ovr>=63?4:3,
+     choices:shuffle(COLLEGES).slice(0,3),college:null,colLog:[],nflLog:[],news:[],awards:{},
+     team:null,contract:null,earnings:0,draft:null,teamStr:null,decision:null,tradeUsed:false,
+     lastMissed:0,severe:false};
+  news(`${S.stars}-star ${pos} ${S.name} narrows his recruitment to three schools.`);
+}
+function addAward(a){S.awards[a]=(S.awards[a]||0)+1}
+
+/* ---------- stats ---------- */
+function skill(ovr,lvl){return clamp((ovr-(lvl==="nfl"?60:54))/35,0,1.1)}
+function genStats(pos,vol,sk,gp,lvl){
+  const s={gp}; const v=()=>rnd(.88,1.12); const nfl=lvl==="nfl";
+  if(gp<=0||vol<=0){STAT_COLS[pos].forEach(c=>s[c[1]]=0);return s}
+  if(pos==="QB"){
+    s.att=Math.round((nfl?585:440)*vol*v());
+    s.cmp=Math.round(s.att*clamp(.56+.13*sk+rnd(-.02,.02),.45,.74));
+    s.yds=Math.round(s.att*(5.8+2.3*sk)*v());
+    s.td=Math.round(s.att*(.033+.026*sk)*v());
+    s.int=Math.round(s.att*(.034-.017*sk)*v());
+    s.ryds=Math.round(rnd(20,380)*vol); s.rtd=Math.round(s.ryds/95*rnd(.3,1.2));
+  } else if(pos==="RB"){
+    s.car=Math.round((nfl?300:240)*vol*v());
+    s.yds=Math.round(s.car*(3.5+1.7*sk)*v());
+    s.td=Math.round(s.car*(.022+.028*sk)*v());
+    s.rec=Math.round((nfl?52:30)*vol*(.6+.4*sk)*v());
+    s.recyds=Math.round(s.rec*(6.5+2.5*sk)*v());
+    s.rectd=Math.round(s.rec*.04*rnd(.3,1.5));
+  } else {
+    const te=pos==="TE";
+    s.tgt=Math.round((te?(nfl?112:78):(nfl?150:118))*vol*v());
+    s.rec=Math.round(s.tgt*(te?.6+.15*sk:.55+.17*sk));
+    s.yds=Math.round(s.rec*(te?9.5+3*sk:11+4*sk)*v());
+    s.td=Math.round(s.rec*(te?.07+.05*sk:.06+.05*sk)*v());
+  }
+  return s;
+}
+function headline(pos,s){
+  if(pos==="QB")return `${s.yds.toLocaleString()} yds, ${s.td} TD, ${s.int} INT`;
+  if(pos==="RB")return `${s.yds.toLocaleString()} rush yds, ${s.td+s.rectd} TD`;
+  return `${s.rec} rec, ${s.yds.toLocaleString()} yds, ${s.td} TD`;
+}
+
+/* ---------- college ---------- */
+function collegeThreshold(c){return 50+c.p*0.28}
+function projectedRole(c){
+  const t=collegeThreshold(c), o=S.ovr;
+  if(o>=t)return ["Day-one starter","Starter"];
+  if(o+5>=t)return ["Starter by sophomore year","Rotation"];
+  if(o+11>=t)return ["Wait until junior year","Backup"];
+  return ["Deep on the depth chart","Backup"];
+}
+function chooseCollege(i){
+  S.college=S.choices[i]; S.phase="college";
+  news(`Commits to ${S.college.name} (#${S.college.rank}, ${S.college.conf}).`);
+}
+function simCollegeSeason(){
+  const c=S.college, n=S.colLog.length, thr=collegeThreshold(c);
+  let role,mult;
+  if(S.ovr>=thr){role="Starter";mult=1}else if(S.ovr>=thr-5){role="Rotation";mult=S.pos==="QB"?.12:.5}else{role="Backup";mult=S.pos==="QB"?.04:.15}
+  let missed=0, inj=null;
+  if(Math.random()<.11){missed=ri(1,8);inj=missed>=6?"Major injury":"Injury"}
+  const str=c.p+rnd(-10,6)+(role==="Starter"?(S.ovr-72)*(S.pos==="QB"?.45:.15):0);
+  let w=0,l=0; for(let g=0;g<12;g++){Math.random()<sig((str-76)/8)?w++:l++}
+  let result, games=12, champ=false;
+  if(w>=11||(w===10&&Math.random()<.5)){
+    const rounds=["First Round","Quarterfinal","Semifinal","National Championship"];
+    result=null;
+    for(const r of rounds){games++; if(Math.random()<sig((str-86)/6)){w++}else{l++;result=`Lost CFP ${r}`;break}}
+    if(!result){result="Won National Championship";champ=true}
+  } else if(w>=6){games++; if(Math.random()<sig((str-78)/7)){w++;result="Won bowl game"}else{l++;result="Lost bowl game"}}
+  else result="No bowl";
+  const gp=Math.max(0,games-missed);
+  const sk=skill(S.ovr,"col");
+  const vol=mult*(gp/games)*(.75+.25*sk)*(games/12)*rnd(.9,1.1);
+  const st=genStats(S.pos,vol,sk,gp,"col");
+  const aw=[];
+  const perf=S.ovr+rnd(-4,4)+(w-8)*.6, elig=role==="Starter"&&gp>=games*.7;
+  if(elig&&perf>=79)aw.push("All-Conference");
+  if(elig&&perf>=87)aw.push("All-American");
+  if(elig&&perf>=91&&S.pos!=="TE"&&Math.random()<(S.pos==="QB"?.45:.2)*(perf-90)/3)aw.push("Heisman Trophy");
+  if(champ)aw.push("National Champion");
+  aw.forEach(addAward);
+  S.colLog.push({yr:S.year,team:c.name,cls:["FR","SO","JR","SR"][n],age:S.age,ovr:S.ovr,role,st,rec:`${w}-${l}`,result,aw,inj,missed});
+  let line=`${["Freshman","Sophomore","Junior","Senior"][n]} year at ${c.name}: ${role.toLowerCase()}, ${headline(S.pos,st)}. Team went ${w}-${l}, ${result.toLowerCase()}.`;
+  if(inj)line+=` Missed ${missed} games injured.`;
+  if(aw.length)line+=` Honors: ${aw.join(", ")}.`;
+  news(line);
+  // development
+  const coach=1+(c.p-80)/160;
+  S.ovr=Math.round(clamp(S.ovr+rnd(3,7.5)*coach*(S.pot-S.ovr>10?1:.6),40,S.pot));
+  S.age++; S.year++;
+  if(S.colLog.length>=4) S.decision={type:"declare_final"};
+  else if(S.colLog.length===3) S.decision={type:"declare"};
+}
+function draftScore(early){
+  const a=S.awards, c=S.college;
+  const adj={QB:2.5,RB:-2,WR:0,TE:-2}[S.pos];
+  return S.ovr+.1*(c.p-80)+2.5*(a["All-American"]||0)+1*(a["All-Conference"]||0)+4*(a["Heisman Trophy"]||0)+adj+(early?1:0);
+}
+function pickFromScore(sc){return Math.max(1,Math.round(Math.exp((97-sc)/4.3)))}
+function projRange(early){
+  const sc=draftScore(early), hi=pickFromScore(sc+3), lo=pickFromScore(sc-3);
+  const fmt=p=>p>257?"undrafted":`Rd ${Math.ceil(p/32)}`;
+  if(hi>257)return "Likely undrafted";
+  return fmt(hi)===fmt(lo)?`Projected ${fmt(hi)}`:`Projected ${fmt(hi)} to ${fmt(lo)}`;
+}
+function runDraft(early){
+  S.decision=null;
+  const sc=draftScore(early)+rnd(-3,3);
+  const pick=pickFromScore(sc);
+  const order=shuffle(TEAM_KEYS);
+  S.teamStr={}; TEAM_KEYS.forEach(t=>S.teamStr[t]=rnd(68,86));
+  if(pick>257){
+    S.draft={pick:null,year:S.year,early};
+    news(`Goes undrafted in the ${S.year} NFL Draft.`);
+    const teams=shuffle(TEAM_KEYS).slice(0,3);
+    S.decision={type:"udfa",options:teams.map(t=>({team:t,years:3,salary:.9,role:projRoleFor(t)}))};
+  } else {
+    const team=order[(pick-1)%32];
+    S.draft={pick,round:Math.ceil(pick/32),inRound:((pick-1)%32)+1,team,year:S.year,early};
+    S.team=team;
+    const sal=Math.max(.95,9.5*Math.exp(-(pick-1)/22));
+    S.contract={team,years:4,salary:+sal.toFixed(2),rookie:true};
+    news(`Selected ${ord(pick)} overall by the ${TEAMS[team]} in the ${S.year} NFL Draft. Signs a 4-year, ${money(sal*4)} rookie deal.`);
+  }
+  S.phase="draft";
+}
+
+/* ---------- NFL ---------- */
+function teamDepth(){return ri(68,84)}
+function projRoleFor(t){const d=teamDepth();return S.ovr>=d?"Starter":S.ovr>=d-6?"Rotation":"Backup"}
+function teamTier(t){const s=S.teamStr[t];return s>=81?"Contender":s>=75?"Playoff hopeful":"Rebuilding"}
+function marketValue(){
+  const p=POS[S.pos]; let v=p.maxPay*Math.pow(clamp((S.ovr-62)/33,0,1.1),2);
+  if(S.age>=31)v*=.8; if(S.age>=34)v*=.75;
+  return Math.max(1.1,v);
+}
+function offerYears(){return S.age<=26?ri(4,5):S.age<=29?ri(3,4):S.age<=32?ri(2,3):1}
+function genOffers(includeCurrent){
+  const count=S.ovr>=85?4:S.ovr>=76?3:S.ovr>=68?2:S.ovr>=62?1:0;
+  if(!count)return [];
+  let pool=shuffle(TEAM_KEYS.filter(t=>t!==S.team)).slice(0,count);
+  if(includeCurrent&&S.team&&Math.random()<.8)pool=[S.team,...pool.slice(0,count-1)];
+  const val=marketValue();
+  return pool.map(t=>({team:t,years:offerYears(),salary:+(val*rnd(.82,1.15)).toFixed(1),role:projRoleFor(t),current:t===S.team}));
+}
+function simNflSeason(){
+  if(S.decision||S.phase!=="nfl")return;
+  const t=S.team, first=S.nflLog.length===0;
+  const depth=teamDepth()-(first&&S.draft&&S.draft.round===1?3:0);
+  let role,mult;
+  if(S.ovr>=depth){role="Starter";mult=1}
+  else if(S.pos==="QB"){role="Backup";mult=Math.random()<.3?ri(2,7)/17:.03}
+  else if(S.ovr>=depth-6){role="Rotation";mult=.45}else{role="Backup";mult=.15}
+  let missed=0,inj=null; S.severe=false;
+  const injRisk=S.pos==="RB"?.22:.15;
+  if(Math.random()<injRisk){
+    if(Math.random()<.2){missed=ri(10,17);inj="Season-ending injury";S.severe=true}
+    else{missed=ri(1,7);inj="Injury"}
+  }
+  const gp=17-missed;
+  const sk=skill(S.ovr,"nfl");
+  const vol=mult*(gp/17)*(.78+.22*sk)*rnd(.92,1.08);
+  const st=genStats(S.pos,vol,sk,gp,"nfl");
+  const str=S.teamStr[t]+(role==="Starter"?(S.ovr-75)*(S.pos==="QB"?.55:.18)*(gp/17):0);
+  let w=0; for(let g=0;g<17;g++)if(Math.random()<sig((str-77)/6))w++;
+  const l=17-w;
+  let made=w>=11||(w===10&&Math.random()<.75)||(w===9&&Math.random()<.4)||(w===8&&Math.random()<.08);
+  let result="Missed playoffs", sb=false;
+  if(made){
+    const rounds=["Wild Card","Divisional","Conference Championship","Super Bowl"];
+    const start=w>=14?1:0; result=null;
+    for(let i=start;i<4;i++){if(Math.random()>=sig((str-80)/6)){result=`Lost ${rounds[i]}`;break}}
+    if(!result){result="Won Super Bowl";sb=true}
+  }
+  const aw=[];
+  const perf=S.ovr+rnd(-3,3)+(w-9)*.35, elig=role==="Starter"&&gp>=12;
+  if(elig&&perf>=84)aw.push("Pro Bowl");
+  if(elig&&perf>=90)aw.push("All-Pro");
+  let mvp=false;
+  if(elig&&S.pos==="QB"&&perf>=93&&w>=11&&Math.random()<(perf-92)*.18)mvp=true;
+  if(elig&&S.pos!=="QB"&&perf>=97&&Math.random()<.12)mvp=true;
+  if(mvp)aw.push("MVP");
+  else if(elig&&perf>=94&&Math.random()<(S.pos==="QB"?.15:.35))aw.push("Offensive POY");
+  if(first&&role==="Starter"&&gp>=10&&perf>=77&&Math.random()<(perf-75)*.1)aw.push("Offensive ROY");
+  if(S.lastMissed>=10&&elig&&perf>=85&&Math.random()<.5)aw.push("Comeback POY");
+  if(sb){aw.push("Super Bowl Champion");if(role==="Starter"&&Math.random()<(S.pos==="QB"?.6:.15))aw.push("Super Bowl MVP")}
+  aw.forEach(addAward);
+  S.earnings+=S.contract.salary;
+  S.nflLog.push({yr:S.year,team:t,age:S.age,ovr:S.ovr,role,st,rec:`${w}-${l}`,result,aw,inj,missed});
+  let line=`${TEAMS[t]} (${w}-${l}): ${role.toLowerCase()}, ${headline(S.pos,st)}. ${result}.`;
+  if(inj)line+=` ${inj}, missed ${missed} games.`;
+  if(aw.length)line+=` Honors: ${aw.join(", ")}.`;
+  news(line);
+  S.lastMissed=missed;
+  offseason();
+}
+function offseason(){
+  S.age++; S.year++; S.tradeUsed=false;
+  const p=POS[S.pos], before=S.ovr;
+  if(S.age<=25)S.ovr+=rnd(1,2+(S.pot-S.ovr)*.35);
+  else if(S.age<=28)S.ovr+=rnd(-1,2.5);
+  if(S.age>p.decline)S.ovr-=rnd(1,3.5)+(S.age-p.decline)*.7;
+  if(S.severe)S.ovr-=rnd(1,4);
+  S.ovr=Math.round(clamp(S.ovr,40,S.pot));
+  const d=S.ovr-before;
+  if(Math.abs(d)>=3)news(`Offseason: rating ${d>0?"climbs":"drops"} to ${S.ovr} (${d>0?"+":""}${d}).`);
+  TEAM_KEYS.forEach(t=>{const s=S.teamStr[t];S.teamStr[t]=clamp(s+rnd(-6,6)+(77-s)*.3,62,92)});
+  S.contract.years--;
+  if(S.age>=40){S.decision={type:"forced",text:`At ${S.age}, no team is willing to sign you. Time to hang it up.`};return}
+  if(S.contract.years<=0){
+    const offers=genOffers(true);
+    S.decision=offers.length?{type:"fa",options:offers}:{type:"forced",text:"Your contract is up and no team made an offer."};
+    return;
+  }
+  const val=marketValue();
+  if((S.ovr<66&&Math.random()<.55)||(S.contract.salary>val*2.2&&S.ovr<76&&Math.random()<.5)){
+    news(`Released by the ${TEAMS[S.team]}.`);
+    const offers=genOffers(false);
+    S.decision=offers.length?{type:"released",options:offers}:{type:"forced",text:`Released by the ${TEAMS[S.team]}, and no team called.`};
+    return;
+  }
+  if(S.contract.years===1&&S.ovr>=78&&Math.random()<.75){
+    S.decision={type:"ext",options:[{team:S.team,years:offerYears(),salary:+(val*rnd(.9,1.12)).toFixed(1),role:"Starter",current:true}]};
+  }
+}
+function signOffer(o,kind){
+  const prev=S.team;
+  S.team=o.team; S.contract={team:o.team,years:o.years,salary:o.salary};
+  const total=money(o.salary*o.years);
+  if(kind==="ext")news(`Signs a ${o.years}-year, ${total} extension with the ${TEAMS[o.team]}.`);
+  else if(kind==="trade")news(`Traded from the ${TEAMS[prev]} to the ${TEAMS[o.team]}.`);
+  else if(kind==="udfa")news(`Signs with the ${TEAMS[o.team]} as an undrafted free agent.`);
+  else if(o.team===prev)news(`Re-signs with the ${TEAMS[o.team]}: ${o.years} years, ${total}.`);
+  else news(`Signs with the ${TEAMS[o.team]} in free agency: ${o.years} years, ${total}.`);
+  S.decision=null;
+}
+function requestTrade(){
+  S.tradeUsed=true;
+  if(S.ovr<70||Math.random()<.15){news(`Trade request goes nowhere. The ${TEAMS[S.team]} find no takers.`);return}
+  const teams=shuffle(TEAM_KEYS.filter(t=>t!==S.team)).slice(0,S.ovr>=82?3:2);
+  S.decision={type:"trade",options:teams.map(t=>({team:t,years:S.contract.years,salary:S.contract.salary,role:projRoleFor(t)}))};
+}
+function retire(){
+  S.retiredFrom=S.team; S.retiredAge=S.age; S.retiredYear=S.year;
+  S.decision=null; S.phase="retired";
+  news(`Announces his retirement at age ${S.age}.`);
+}
+function hof(){
+  const a=S.awards, tot=totals(S.nflLog);
+  let sc=(a["MVP"]||0)*10+(a["All-Pro"]||0)*5+(a["Pro Bowl"]||0)*1.5+(a["Super Bowl Champion"]||0)*3+(a["Offensive POY"]||0)*5+(a["Super Bowl MVP"]||0)*3+S.nflLog.length*.25;
+  if(S.pos==="QB")sc+=tot.yds/6500+tot.td/60;
+  else if(S.pos==="RB")sc+=tot.yds/1800+(tot.td+tot.rectd)/20;
+  else sc+=(tot.yds/2000+tot.td/18)*(S.pos==="TE"?1.4:1);
+  if(sc>=46)return ["First-ballot Hall of Famer","A gold jacket on the first try. One of the best to ever play the position."];
+  if(sc>=31)return ["Hall of Famer","Canton calls. It may take a few ballots, but the bust is coming."];
+  if(sc>=19)return ["Hall of Very Good","A long, respected career that falls just short of Canton."];
+  if(S.nflLog.length>=6)return ["Solid pro","A real career in the league. Plenty of players never get one."];
+  return ["Brief career","A short run in the league, but you made it to Sundays."];
+}
+function totals(log){
+  const t={gp:0};STAT_COLS[S.pos].forEach(c=>t[c[1]]=0);
+  log.forEach(r=>{t.gp+=r.st.gp;STAT_COLS[S.pos].forEach(c=>t[c[1]]+=r.st[c[1]]||0)});
+  return t;
+}
+
+/* ---------- render ---------- */
+const app=document.getElementById("app");
+function render(){
+  if(SHARED){
+    document.getElementById("mastActions").innerHTML="";
+    app.className="layout solo";
+    app.innerHTML=`<section class="board" style="max-width:820px;margin:0 auto;width:100%">${shareCard(SHARED)}
+      <div class="panel"><div class="panel-head"><div><div class="label">Think you can beat it?</div><h2>Start your own career</h2></div>
+      <button class="btn primary" data-act="sharednew" id="btnSharedNew">Play the sim</button></div></div></section>`;
+    return;
+  }
+  document.getElementById("mastActions").innerHTML = S&&S.phase!=="setup"
+    ? `<button class="btn ${uiArmed==="new"?"warn armed":""}" data-act="new" id="btnNew">${uiArmed==="new"?"Tap again to abandon":"New career"}</button>`:"";
+  if(!S||S.phase==="setup"){app.className="layout solo";app.innerHTML=setupView();return}
+  app.className="layout";
+  let main="";
+  if(S.phase==="recruit")main=recruitView();
+  else if(S.phase==="college")main=collegeView();
+  else if(S.phase==="draft")main=draftView();
+  else if(S.phase==="nfl")main=nflView();
+  else if(S.phase==="retired")main=retiredView();
+  app.innerHTML=cardView()+`<section class="board">${main}${S.phase!=="recruit"?newsView():""}</section>`;
+}
+function setupView(){
+  const saved=load();
+  return `<section class="board">
+   <div class="hero"><div class="label">New career</div>
+     <h1>From signing day to Canton</h1>
+     <p>Pick a position and choose from three college offers. Your college seasons decide where you go in the draft. From there, it is your career: re-sign, chase a ring in free agency, request a trade, or walk away.</p></div>
+   ${saved&&saved.phase!=="setup"?`<div class="panel"><div class="panel-head"><div><div class="label">Saved career</div><h2>${esc(saved.name)}, ${saved.pos}</h2></div><button class="btn primary" data-act="resume" id="btnResume">Resume career</button></div><p class="muted" style="margin:0">Age ${saved.age} · ${saved.phase==="nfl"||saved.phase==="retired"?(saved.team?TEAMS[saved.team]:"Free agent"):(saved.college?saved.college.name:"Recruiting")}</p></div>`:""}
+   <div class="panel" style="display:flex;flex-direction:column;gap:18px">
+     <div class="field"><label class="label" for="pname">Player name</label><input type="text" id="pname" value="${esc(setupName)}" placeholder="Enter your player's name" maxlength="28" autocomplete="off"></div>
+     <div><div class="label" style="margin-bottom:8px">Position</div>
+       <div class="grid4">${Object.entries(POS).map(([k,p])=>`<button class="opt ${setupPos===k?"sel":""}" data-act="pos" data-pos="${k}" id="pos-${k}" aria-pressed="${setupPos===k}"><span class="big">${k}</span><strong>${p.name}</strong><span class="desc">${p.blurb}</span></button>`).join("")}</div></div>
+     <div class="actions"><button class="btn primary" data-act="start" id="btnStart">Enter recruiting</button></div>
+   </div></section>`;
+}
+function cardView(){
+  const sub = S.phase==="nfl"||S.phase==="retired"||(S.phase==="draft"&&S.team)
+    ? (S.team?TEAMS[S.team]:"Free agent")
+    : S.college?S.college.name:"High school recruit";
+  const potPct=clamp((S.pot-40)/59*100,0,100);
+  const a=S.awards;
+  const rows=[["Age",S.age],["Team",esc(sub)]];
+  if(S.phase==="recruit"||(S.phase==="college"))rows.push(["Recruit","★".repeat(S.stars)+` ${S.stars}-star`]);
+  if(S.contract&&S.phase!=="retired")rows.push(["Contract",`${money(S.contract.salary)}/yr · ${S.contract.years} yr${S.contract.years===1?"":"s"} left`]);
+  if(S.draft)rows.push(["Drafted",S.draft.pick?`${S.draft.year} · Rd ${S.draft.round}, #${S.draft.pick}`:`${S.draft.year} · Undrafted`]);
+  if(S.earnings)rows.push(["Earnings",money(S.earnings)]);
+  const rings=a["Super Bowl Champion"]||0;
+  if(rings)rows.push(["Rings",`<span class="chip ring">${rings}× Super Bowl</span>`]);
+  return `<aside class="pcard">
+    <div class="pcard-top"><div><div class="pname">${esc(S.name)}</div><div class="ppos">${POS[S.pos].name}</div></div><div class="jersey">${S.num}</div></div>
+    <div class="ovr"><b class="mono">${S.ovr}</b><div><div class="label">Overall</div><span class="grade">${grade(S.ovr)}</span></div></div>
+    <dl class="facts">${rows.map(r=>`<dt>${r[0]}</dt><dd>${r[1]}</dd>`).join("")}
+      <dt>Potential</dt><dd>${grade(S.pot)}<div class="bar"><i style="width:${potPct}%"></i></div></dd></dl>
+  </aside>`;
+}
+function recruitView(){
+  return `<div class="panel"><div class="panel-head"><div><div class="label">Signing day</div><h2>Three offers on the table</h2></div></div>
+   <p class="muted" style="margin:-4px 0 16px">Bigger programs win more and boost your draft stock, but you may sit behind upperclassmen. Smaller programs get you on the field sooner.</p>
+   <div class="grid3">${S.choices.map((c,i)=>{const [txt,cls]=projectedRole(c);return `<button class="opt" data-act="college" data-i="${i}" id="col-${i}">
+     <span class="rankno">#${c.rank} nationally</span><span class="big">${esc(c.name)}</span><span class="desc">${c.conf}</span>
+     <span class="kv"><span>Program prestige</span><span class="mono">${c.p}</span></span>
+     <span class="kv"><span>Starter bar</span><span class="mono">${Math.round(collegeThreshold(c))} OVR</span></span>
+     <span class="kv"><span>Playing time</span><span class="role ${cls}">${txt}</span></span>
+     <span class="btn primary" style="text-align:center;margin-top:6px">Commit</span></button>`}).join("")}</div></div>`;
+}
+function seasonTable(log,college){
+  const cols=STAT_COLS[S.pos];
+  if(!log.length)return `<div class="table-wrap"><div class="empty">No seasons played yet. Sim your first season to start the record.</div></div>`;
+  const tot=totals(log);
+  return `<div class="table-wrap"><table><thead><tr><th class="l">Year</th><th class="l">${college?"Class":"Team"}</th><th>Age</th><th>OVR</th><th class="l">Role</th><th>GP</th>${cols.map(c=>`<th>${c[0]}</th>`).join("")}<th>W-L</th><th class="l">Result</th><th class="l">Honors</th></tr></thead><tbody>
+   ${log.map(r=>`<tr><td class="l mono">${r.yr}</td><td class="l">${college?r.cls:r.team}</td><td>${r.age}</td><td>${r.ovr}</td><td class="l"><span class="role ${r.role}">${r.role}</span></td><td>${r.st.gp}</td>${cols.map(c=>`<td>${(r.st[c[1]]||0).toLocaleString()}</td>`).join("")}<td>${r.rec}</td><td class="l">${r.result}</td><td class="l">${r.inj?`<span class="chip inj">${r.inj}</span>`:""}${r.aw.map(a=>`<span class="chip ${/Champion/.test(a)?"ring":""}">${a}</span>`).join("")}</td></tr>`).join("")}
+   <tr class="total"><td class="l">Career</td><td class="l">${log.length} szn</td><td></td><td></td><td></td><td>${tot.gp}</td>${cols.map(c=>`<td>${tot[c[1]].toLocaleString()}</td>`).join("")}<td></td><td></td><td></td></tr>
+  </tbody></table></div>`;
+}
+function collegeView(){
+  const n=S.colLog.length, d=S.decision;
+  let act="";
+  if(d&&d.type==="declare"){
+    act=`<div class="panel decision"><div class="label">Decision · ${projRange(true)}</div><h2 style="margin:4px 0 8px">Declare for the ${S.year} NFL Draft?</h2>
+      <p class="muted" style="margin:0 0 14px">You are draft-eligible after three seasons. Coming back means another year of development and production, plus another year of injury risk.</p>
+      <div class="actions"><button class="btn primary" data-act="declare" id="btnDeclare">Declare for the draft</button><button class="btn" data-act="return" id="btnReturn">Return for senior year</button></div></div>`;
+  } else if(d&&d.type==="declare_final"){
+    act=`<div class="panel decision"><div class="label">College career complete · ${projRange(false)}</div><h2 style="margin:4px 0 14px">On to the ${S.year} NFL Draft</h2>
+      <div class="actions"><button class="btn primary" data-act="draft" id="btnDraft">Go to the draft</button></div></div>`;
+  }
+  return `${act}<div class="panel"><div class="panel-head"><div><div class="label">${esc(S.college.name)} · ${S.college.conf}</div><h2>College career</h2></div>
+     ${!d?`<div class="actions"><button class="btn primary" data-act="simcol" id="btnSimCol">Sim ${["freshman","sophomore","junior","senior"][n]} season</button><button class="btn" data-act="simcolall" id="btnSimColAll">Sim to draft decision</button></div>`:""}</div>
+   ${seasonTable(S.colLog,true)}</div>`;
+}
+function draftView(){
+  const d=S.draft;
+  if(!d.pick){
+    return `<div class="draftcard"><div class="label" style="color:var(--field-ink)">${d.year} NFL Draft · All 7 rounds</div><div class="pickno">UDFA</div><h2>Your name was not called</h2><p>Three teams want you in camp as an undrafted free agent. Pick the best shot at a roster spot.</p></div>
+     ${decisionView()}`;
+  }
+  return `<div class="draftcard"><div class="label" style="color:var(--field-ink)">${d.year} NFL Draft · Round ${d.round}, Pick ${d.inRound}</div>
+     <div class="pickno">#${d.pick}</div>
+     <h2>The ${TEAMS[d.team]} select ${esc(S.name)}</h2>
+     <p>${POS[S.pos].name}, ${esc(S.college.name)}. ${d.early?"Left school a year early.":"Four-year college career."} Rookie deal: 4 years, ${money(S.contract.salary*4)}.</p>
+     <div class="actions" style="margin-top:16px"><button class="btn" style="background:var(--accent);border-color:var(--accent);color:#1b1305" data-act="camp" id="btnCamp">Report to training camp</button></div></div>`;
+}
+function offerCard(o,i,kind){
+  const label={trade:"Accept trade",ext:"Sign extension",udfa:"Sign",fa:o.current?"Re-sign":"Sign",released:"Sign"}[kind];
+  return `<div class="opt" style="cursor:default">
+    <span class="rankno">${o.current?"Current team":teamTier(o.team)}</span>
+    <span class="big" style="font-size:1.5rem">${TEAMS[o.team]}</span>
+    <span class="kv"><span>Contract</span><span class="mono">${o.years} yr · ${money(o.salary)}/yr</span></span>
+    <span class="kv"><span>Total</span><span class="mono">${money(o.salary*o.years)}</span></span>
+    <span class="kv"><span>Projected role</span><span class="role ${o.role}">${o.role}</span></span>
+    <button class="btn primary" style="margin-top:6px" data-act="sign" data-kind="${kind}" data-i="${i}" id="sign-${i}">${label}</button></div>`;
+}
+function decisionView(){
+  const d=S.decision; if(!d)return "";
+  if(d.type==="forced")return `<div class="panel decision"><div class="label">End of the road</div><h2 style="margin:4px 0 8px">No more offers</h2><p class="muted" style="margin:0 0 14px">${d.text}</p><button class="btn primary" data-act="retire2" id="btnForcedRetire">Retire</button></div>`;
+  const meta={
+    fa:["Free agency",`Your contract is up. ${d.options.length} team${d.options.length>1?"s":""} made offers.`,""],
+    released:["Released","You were cut. Here is who called.",""],
+    ext:["Extension offer",`The ${TEAMS[S.team]} want to lock you up before you hit the market.`,"Play out the final year"],
+    trade:["Trade request","These teams are willing to deal for you. Your current contract comes with you.",`Stay with the ${TEAMS[S.team]||""}`],
+    udfa:["Undrafted free agency","Choose where to sign.",""]
+  }[d.type];
+  return `<div class="panel decision"><div class="label">${meta[0]}</div><p style="margin:4px 0 14px">${meta[1]}</p>
+    <div class="grid3">${d.options.map((o,i)=>offerCard(o,i,d.type)).join("")}</div>
+    <div class="actions" style="margin-top:14px">${meta[2]?`<button class="btn" data-act="decline" id="btnDecline">${meta[2]}</button>`:""}
+    ${d.type!=="udfa"?`<button class="btn warn ${uiArmed==="retire"?"armed":""}" data-act="retire" id="btnRetireD">${uiArmed==="retire"?"Confirm retirement":"Retire instead"}</button>`:""}</div></div>`;
+}
+function trophyCase(){
+  const order=["MVP","Offensive POY","Offensive ROY","Comeback POY","Super Bowl Champion","Super Bowl MVP","All-Pro","Pro Bowl","Heisman Trophy","National Champion","All-American","All-Conference"];
+  const have=order.filter(k=>S.awards[k]);
+  if(!have.length)return `<p class="muted" style="margin:0">Nothing yet. Production and winning fill this shelf.</p>`;
+  return `<div class="trophies">${have.map(k=>`<div class="trophy"><b class="mono">${S.awards[k]}×</b><span>${k}</span></div>`).join("")}</div>`;
+}
+function nflView(){
+  const d=S.decision, busy=!!d;
+  return `${decisionView()}
+   <div class="panel"><div class="panel-head"><div><div class="label">${S.year} season · ${TEAMS[S.team]} · ${teamTier(S.team)}</div><h2>Pro career</h2></div></div>
+     <div class="actions" style="margin-bottom:16px">
+       <button class="btn primary" data-act="simnfl" id="btnSim" ${busy?"disabled":""}>Sim ${S.year} season</button>
+       <button class="btn" data-act="simnext" id="btnSimNext" ${busy?"disabled":""}>Sim to next decision</button>
+       <button class="btn" data-act="trade" id="btnTrade" ${busy||S.tradeUsed?"disabled":""}>${S.tradeUsed?"Trade requested":"Request trade"}</button>
+       ${!busy?`<button class="btn warn ${uiArmed==="retire"?"armed":""}" data-act="retire" id="btnRetire">${uiArmed==="retire"?"Confirm retirement":"Retire"}</button>`:""}
+     </div>
+     ${seasonTable(S.nflLog,false)}</div>
+   <div class="two"><div class="panel"><div class="label" style="margin-bottom:10px">Trophy case</div>${trophyCase()}</div>
+     <div class="panel"><div class="label" style="margin-bottom:10px">College record · ${esc(S.college.name)}</div>${collegeMini()}</div></div>`;
+}
+function collegeMini(){
+  const t=totals(S.colLog);
+  return `<p style="margin:0">${S.colLog.length} seasons · ${headline(S.pos,{...t,rectd:t.rectd||0,int:t.int||0})}</p>`;
+}
+/* ---------- sharing ---------- */
+function buildSummary(){
+  const [v,txt]=hof(), t=totals(S.nflLog);
+  const peak=Math.max(S.ovr,...S.nflLog.map(r=>r.ovr),...S.colLog.map(r=>r.ovr));
+  const teams=[]; S.nflLog.forEach(r=>{if(!teams.includes(r.team))teams.push(r.team)});
+  return {v:1,n:S.name,p:S.pos,num:S.num,c:S.college?S.college.name:"",
+    d:S.draft?{y:S.draft.year,r:S.draft.round||0,k:S.draft.pick||0,t:S.draft.team||""}:null,
+    rt:S.retiredFrom||S.team||"",ra:S.retiredAge||S.age,ry:S.retiredYear||S.year,
+    ns:S.nflLog.length,e:+S.earnings.toFixed(1),pot:S.pot,pk:peak,a:S.awards,t,tm:teams,vd:v,vt:txt};
+}
+function encodeSummary(o){
+  const b=btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+  return "c"+b.replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function decodeSummary(h){
+  try{
+    if(!h||h[0]!=="c")return null;
+    let b=h.slice(1).replace(/-/g,"+").replace(/_/g,"/"); while(b.length%4)b+="=";
+    const o=JSON.parse(decodeURIComponent(escape(atob(b))));
+    return o&&o.n&&POS[o.p]?o:null;
+  }catch(e){return null}
+}
+function statTiles(pos,t){
+  const tiles=[["Games",t.gp]];
+  if(pos==="QB"){
+    tiles.push(["Pass yds",t.yds],["Pass TD",t.td],["INT",t.int],["Comp %",t.att?(t.cmp/t.att*100).toFixed(1):"0.0"],["Yds/att",t.att?(t.yds/t.att).toFixed(1):"0.0"],["Rush yds",t.ryds],["Rush TD",t.rtd]);
+  } else if(pos==="RB"){
+    tiles.push(["Rush yds",t.yds],["Rush TD",t.td],["Yds/carry",t.car?(t.yds/t.car).toFixed(1):"0.0"],["Carries",t.car],["Receptions",t.rec],["Rec yds",t.recyds],["Total TD",t.td+t.rectd]);
+  } else {
+    tiles.push(["Receptions",t.rec],["Rec yds",t.yds],["Rec TD",t.td],["Yds/catch",t.rec?(t.yds/t.rec).toFixed(1):"0.0"],["Targets",t.tgt],["Catch %",t.tgt?(t.rec/t.tgt*100).toFixed(1):"0.0"]);
+  }
+  return `<div class="tiles">${tiles.map(x=>`<div class="tile"><b class="mono">${typeof x[1]==="number"?x[1].toLocaleString():x[1]}</b><span>${x[0]}</span></div>`).join("")}</div>`;
+}
+function trophyList(a){
+  const order=["MVP","Offensive POY","Offensive ROY","Comeback POY","Super Bowl Champion","Super Bowl MVP","All-Pro","Pro Bowl","Heisman Trophy","National Champion","All-American","All-Conference"];
+  const have=order.filter(k=>a[k]);
+  if(!have.length)return `<p class="muted" style="margin:0">No major awards.</p>`;
+  return `<div class="trophies">${have.map(k=>`<div class="trophy"><b class="mono">${a[k]}×</b><span>${k}</span></div>`).join("")}</div>`;
+}
+function draftLine(d){
+  if(!d)return "—";
+  if(!d.k)return `${d.y} · Undrafted`;
+  return `${d.y} · Rd ${d.r}, #${d.k} overall<br><span class="muted">${TEAMS[d.t]||""}</span>`;
+}
+function shareCard(o){
+  const rings=o.a["Super Bowl Champion"]||0;
+  const facts=[
+    ["Drafted",draftLine(o.d)],
+    ["College",esc(o.c)],
+    ["Retired with",`${TEAMS[o.rt]||"Free agent"}<br><span class="muted">${o.ry} · age ${o.ra}</span>`],
+    ["NFL seasons",`${o.ns}${o.tm.length>1?` <span class="muted">· ${o.tm.length} teams</span>`:""}`],
+    ["Career earnings",`<span class="mono">${money(o.e)}</span>`],
+    ["Rings",rings?`<span class="chip ring">${rings}× Super Bowl</span>`:"0"],
+    ["Potential",`${grade(o.pot)} <span class="muted mono">(${o.pot})</span>`],
+    ["Peak overall",`${grade(o.pk)} <span class="muted mono">(${o.pk})</span>`]
+  ];
+  return `<article class="sharecard">
+    <div class="sc-top"><div><div class="label" style="color:var(--field-ink);opacity:.8">Career card · ${POS[o.p].name}</div>
+      <div class="sc-name">${esc(o.n)}</div><div class="verdict" style="font-size:clamp(1.4rem,4vw,2rem);margin-top:6px">${esc(o.vd)}</div></div>
+      <div class="jersey">${o.num}</div></div>
+    <div class="sc-body">
+      <dl class="sc-facts">${facts.map(f=>`<div><dt>${f[0]}</dt><dd>${f[1]}</dd></div>`).join("")}</dl>
+      <div><div class="label" style="margin-bottom:8px">NFL career stats</div>${statTiles(o.p,o.t)}</div>
+      <div><div class="label" style="margin-bottom:8px">Trophy case</div>${trophyList(o.a)}</div>
+      ${o.tm.length?`<p class="muted" style="margin:0;font-size:.9rem">Teams: ${o.tm.map(k=>TEAMS[k]).join(" → ")}</p>`:""}
+    </div></article>`;
+}
+function summaryText(o){
+  const t=o.t, rings=o.a["Super Bowl Champion"]||0;
+  const d=!o.d?"":o.d.k?`Drafted ${o.d.y}, Round ${o.d.r} (#${o.d.k} overall) by the ${TEAMS[o.d.t]}`:`Undrafted in ${o.d.y}`;
+  const stat=o.p==="QB"?`${t.yds.toLocaleString()} pass yds, ${t.td} TD, ${t.int} INT, ${t.ryds.toLocaleString()} rush yds`
+    :o.p==="RB"?`${t.yds.toLocaleString()} rush yds, ${t.td} rush TD, ${t.rec} rec, ${t.recyds.toLocaleString()} rec yds`
+    :`${t.rec} rec, ${t.yds.toLocaleString()} yds, ${t.td} TD`;
+  const aw=Object.entries(o.a).map(([k,n])=>`${n}× ${k}`).join(", ")||"None";
+  return [`${o.n} | ${o.p} #${o.num} | ${o.vd}`,`${o.c} → ${d}`,`Retired with the ${TEAMS[o.rt]||"free agent pool"} at ${o.ra} after ${o.ns} NFL seasons`,
+    `Career: ${stat} in ${t.gp} games`,`Earnings: ${money(o.e)} | Rings: ${rings} | Potential: ${grade(o.pot)} | Peak: ${o.pk} OVR`,`Awards: ${aw}`].join("\n");
+}
+function copyText(text,statusId,ok){
+  const st=document.getElementById(statusId);
+  const fallback=()=>{const el=document.getElementById("shareLink");if(el){el.focus();el.select()}if(st)st.textContent="Copy was blocked. The link is selected below, so copy it manually."};
+  try{navigator.clipboard.writeText(text).then(()=>{if(st)st.textContent=ok},fallback)}catch(e){fallback()}
+}
+
+function retiredView(){
+  const sum=buildSummary(), link=SHARE_BASE+"#"+encodeSummary(sum);
+  return `${shareCard(sum)}
+   <div class="panel"><div class="panel-head"><div><div class="label">Share your career</div><h2>Show it off</h2></div></div>
+     <div class="actions"><button class="btn primary" data-act="copylink" id="btnCopyLink">Copy share link</button><button class="btn" data-act="copytext" id="btnCopyText">Copy text summary</button>
+       <button class="btn" data-act="newnow" id="btnNewNow">Start a new career</button></div>
+     <p id="shareStatus" class="muted" style="margin:10px 0 6px;min-height:1.5em" aria-live="polite"></p>
+     <input type="text" id="shareLink" readonly value="${esc(link)}" style="width:100%;font-family:var(--f-mono);font-size:.8rem" aria-label="Share link">
+     <p class="muted" style="margin:8px 0 0;font-size:.88rem">${IS_HOSTED?"Anyone with the link sees this career card and can start their own.":"The link opens this career card for anyone who can view this page. To let friends open it, turn on link sharing from the page's Share menu."}</p></div>
+   <div class="panel"><div class="panel-head"><h2>NFL career</h2></div>${seasonTable(S.nflLog,false)}</div>
+   <div class="panel"><div class="panel-head"><h2>College · ${esc(S.college.name)}</h2></div>${seasonTable(S.colLog,true)}</div>`;
+}
+function newsView(){
+  return `<div class="panel"><div class="label" style="margin-bottom:6px">Career log</div><ul class="news">${S.news.slice(0,40).map(n=>`<li><span class="yr">${n.yr}</span><span>${esc(n.text)}</span></li>`).join("")}</ul></div>`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]"); if(!b||b.disabled)return;
+  const a=b.dataset.act;
+  if(a!=="retire"&&a!=="new")uiArmed=null;
+  switch(a){
+    case "pos": setupPos=b.dataset.pos; render(); return;
+    case "start": newCareer((document.getElementById("pname").value||"").trim(),setupPos); break;
+    case "resume": S=load(); break;
+    case "college": chooseCollege(+b.dataset.i); break;
+    case "simcol": simCollegeSeason(); break;
+    case "simcolall": while(!S.decision)simCollegeSeason(); break;
+    case "declare": runDraft(true); break;
+    case "return": S.decision=null; news("Returns for his senior season."); break;
+    case "draft": runDraft(false); break;
+    case "camp": S.phase="nfl"; break;
+    case "simnfl": simNflSeason(); break;
+    case "simnext": {let k=0; do{simNflSeason();k++}while(!S.decision&&S.phase==="nfl"&&k<25)} break;
+    case "trade": requestTrade(); break;
+    case "sign": {const d=S.decision,o=d.options[+b.dataset.i]; signOffer(o,d.type); if(S.phase==="draft")S.phase="nfl"} break;
+    case "decline": if(S.decision.type==="ext")news("Turns down the extension to play out his deal."); else news(`Stays with the ${TEAMS[S.team]}.`); S.decision=null; break;
+    case "retire": if(uiArmed==="retire"){uiArmed=null;retire()}else{uiArmed="retire";render();return} break;
+    case "retire2": retire(); break;
+    case "new": if(uiArmed==="new"){uiArmed=null;wipe();S=null;render();window.scrollTo(0,0);return}else{uiArmed="new";render();return}
+    case "newnow": wipe(); S=null; render(); window.scrollTo(0,0); return;
+    case "copylink": copyText(document.getElementById("shareLink").value,"shareStatus","Link copied. Paste it anywhere to share your career card."); return;
+    case "copytext": copyText(summaryText(buildSummary())+"\n"+document.getElementById("shareLink").value,"shareStatus","Summary copied."); return;
+    case "sharednew": SHARED=null; try{history.replaceState(null,"",location.pathname+location.search)}catch(e){} render(); window.scrollTo(0,0); return;
+  }
+  save(); render();
+  if(["start","college","declare","draft","camp","resume","sign"].includes(a))window.scrollTo(0,0);
+});
+
+document.addEventListener("input",e=>{if(e.target.id==="pname")setupName=e.target.value});
+
+function start(data){
+  S=(data&&data.S)||null;
+  if(data&&data.setupName)setupName=data.setupName;
+  SHARED=decodeSummary((location.hash||"").slice(1));
+  if(!S){const s=load(); if(s&&s.phase!=="setup"){S=null}} // show setup with resume option
+  render();
+}
+window.claude?.hot?.snapshot?.(()=>({S,setupName}));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
+</body>
+</html>

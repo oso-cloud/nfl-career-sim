@@ -146,6 +146,64 @@ tr.total td{font-weight:600;background:var(--surface-2)}
 .tile span{font-size:.8rem;color:var(--muted)}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
 .muted{color:var(--muted)}
+/* ---------- responsive: phones, tablets, large screens ---------- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{font-size:clamp(15px,0.85rem + 0.25vw,17px)}
+.btn{min-height:44px}
+@media (min-width:1500px){.wrap{max-width:1380px}.layout{grid-template-columns:minmax(280px,330px) minmax(0,1fr)}}
+td.l:first-child,th.l:first-child{position:sticky;left:0;z-index:1;background:var(--surface)}
+th.l:first-child{background:var(--surface-2);z-index:2}
+tr.total td.l:first-child{background:var(--surface-2)}
+@media (max-width:860px){
+  .layout{gap:14px;padding-block:14px 32px}
+  .board{gap:14px}
+  .pcard{display:grid;grid-template-columns:auto minmax(0,1fr)}
+  .pcard-top{grid-column:1/-1;padding:12px 16px;align-items:center}
+  .pname{font-size:1.45rem}
+  .ppos{font-size:.75rem;margin-top:2px}
+  .jersey{font-size:2.8rem}
+  .ovr{flex-direction:column;align-items:flex-start;gap:4px;border-bottom:0;border-right:1px solid var(--line);padding:12px 16px}
+  .ovr b{font-size:2.6rem}
+  .facts{grid-template-columns:repeat(2,auto minmax(0,1fr));gap:4px 10px;padding:12px 14px;font-size:.86rem;align-content:center}
+  .facts dt{font-size:.7rem}
+  .panel{padding:16px}
+  .panel h2{font-size:1.4rem}
+  .draftcard{padding:22px 18px}
+}
+@media (max-width:600px){
+  .mast .wrap{flex-wrap:nowrap;padding-block:12px}
+  .mast .sub{display:none}
+  .wordmark{font-size:1.5rem}
+  .mast .btn{padding:8px 12px;font-size:.8rem;min-height:38px;white-space:nowrap}
+  .hero h1{font-size:2.1rem}
+  .grid4{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .grid4 .opt{padding:12px}
+  .grid4 .opt .big{font-size:1.7rem}
+  .grid4 .opt .desc{font-size:.8rem;line-height:1.35}
+  .facts{grid-template-columns:auto minmax(0,1fr)}
+  .actions .btn{flex:1 1 140px;letter-spacing:.04em;padding-inline:12px}
+  table{font-size:.8rem}
+  th,td{padding:6px 8px}
+  .news{max-height:260px}
+  .news li{grid-template-columns:2.8rem 1fr;font-size:.88rem}
+  .sc-top{padding:16px}
+  .sc-body{padding:16px;gap:16px}
+  .sc-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+  .sc-facts dd{font-size:.92rem}
+  .tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .tile{padding:8px}
+  .tile b{font-size:1.1rem}
+  .tile span{font-size:.72rem}
+  .trophy{min-width:0;flex:1 1 calc(50% - 8px);padding:8px 10px}
+  .trophy b{font-size:1.4rem}
+  .decision .grid3{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:360px){
+  .grid4{grid-template-columns:minmax(0,1fr)}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .sc-facts{grid-template-columns:minmax(0,1fr)}
+}
+
 </style>
 </head>
 <body>
@@ -508,6 +566,11 @@ function render(){
   else if(S.phase==="draft")main=draftView();
   else if(S.phase==="nfl")main=nflView();
   else if(S.phase==="retired")main=retiredView();
+  if(S.phase==="retired"){
+    app.className="layout solo";
+    app.innerHTML=`<section class="board" style="max-width:900px;margin:0 auto;width:100%">${main}${newsView()}</section>`;
+    return;
+  }
   app.innerHTML=cardView()+`<section class="board">${main}${S.phase!=="recruit"?newsView():""}</section>`;
 }
 function setupView(){

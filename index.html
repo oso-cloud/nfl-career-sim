@@ -144,6 +144,8 @@ tr.total td{font-weight:600;background:var(--surface-2)}
 .tile{background:var(--surface-2);border-radius:4px;padding:10px 12px;display:flex;flex-direction:column}
 .tile b{font-size:1.35rem;font-weight:600;line-height:1.1}
 .tile span{font-size:.8rem;color:var(--muted)}
+.card-preview{margin-top:12px}
+.card-preview img{display:block;width:100%;max-width:420px;border-radius:6px;border:1px solid var(--line)}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
 .muted{color:var(--muted)}
 /* ---------- responsive: phones, tablets, large screens ---------- */
@@ -569,6 +571,7 @@ function render(){
   if(S.phase==="retired"){
     app.className="layout solo";
     app.innerHTML=`<section class="board" style="max-width:900px;margin:0 auto;width:100%">${main}${newsView()}</section>`;
+    prepareCardImage();
     return;
   }
   app.innerHTML=cardView()+`<section class="board">${main}${S.phase!=="recruit"?newsView():""}</section>`;
@@ -785,14 +788,150 @@ function copyText(text,statusId,ok){
   try{navigator.clipboard.writeText(text).then(()=>{if(st)st.textContent=ok},fallback)}catch(e){fallback()}
 }
 
+/* ---------- career card image ---------- */
+const CARD_FONTS=['800 100px "Saira Condensed"','700 30px "Saira Condensed"','600 40px "IBM Plex Mono"','600 30px "Source Sans 3"','400 30px "Source Sans 3"'];
+const CF={disp:'"Saira Condensed","Arial Narrow",sans-serif',body:'"Source Sans 3",system-ui,sans-serif',mono:'"IBM Plex Mono",ui-monospace,monospace'};
+const CC={bg:"#101a14",panel:"#17241c",tile:"#1e2e24",line:"#2c4034",field:"#174d31",field2:"#1a5536",ink:"#eef4ec",muted:"#97a99b",gold:"#e2a63e",goldInk:"#1b1305"};
+function fitFont(ctx,text,weight,family,maxSize,maxW){let s=maxSize;do{ctx.font=`${weight} ${s}px ${family}`;if(ctx.measureText(text).width<=maxW)return s;s-=2}while(s>18);return s}
+function drawCareerCard(o){
+  const W=1080,P=64,IW=W-2*P;
+  const order=["MVP","Offensive POY","Offensive ROY","Comeback POY","Super Bowl Champion","Super Bowl MVP","All-Pro","Pro Bowl","Heisman Trophy","National Champion","All-American","All-Conference"];
+  const chips=order.filter(k=>o.a[k]).map(k=>`${o.a[k]}× ${k}`);
+  const t=o.t,pos=o.p;
+  const tiles=[["Games",t.gp]];
+  if(pos==="QB")tiles.push(["Pass yds",t.yds],["Pass TD",t.td],["INT",t.int],["Comp %",t.att?(t.cmp/t.att*100).toFixed(1):"0.0"],["Yds/att",t.att?(t.yds/t.att).toFixed(1):"0.0"],["Rush yds",t.ryds],["Rush TD",t.rtd]);
+  else if(pos==="RB")tiles.push(["Rush yds",t.yds],["Rush TD",t.td],["Yds/carry",t.car?(t.yds/t.car).toFixed(1):"0.0"],["Carries",t.car],["Receptions",t.rec],["Rec yds",t.recyds],["Total TD",t.td+t.rectd]);
+  else tiles.push(["Receptions",t.rec],["Rec yds",t.yds],["Rec TD",t.td],["Yds/catch",t.rec?(t.yds/t.rec).toFixed(1):"0.0"],["Targets",t.tgt],["Catch %",t.tgt?(t.rec/t.tgt*100).toFixed(1):"0.0"]);
+  const rings=o.a["Super Bowl Champion"]||0;
+  const d=o.d;
+  const facts=[
+    ["Drafted",!d?"—":d.k?`${d.y} · Rd ${d.r}, #${d.k}`:`${d.y} · Undrafted`,d&&d.k?TEAMS[d.t]||"":""],
+    ["College",o.c,""],
+    ["Retired with",TEAMS[o.rt]||"Free agent",`${o.ry} · age ${o.ra}`],
+    ["NFL seasons",String(o.ns),o.tm.length>1?`${o.tm.length} teams`:""],
+    ["Career earnings",money(o.e),""],
+    ["Super Bowl rings",String(rings),""],
+    ["Potential",`${grade(o.pot)} (${o.pot})`,""],
+    ["Peak overall",`${grade(o.pk)} (${o.pk})`,""]
+  ];
+  // measure trophy chip rows
+  const m=document.createElement("canvas").getContext("2d");
+  m.font=`700 28px ${CF.disp}`;
+  const chipH=56,chipGap=12;let rows=chips.length?1:0,x=0;
+  chips.forEach(c=>{const w=m.measureText(c.toUpperCase()).width+40;if(x&&x+w>IW){rows++;x=0}x+=w+chipGap});
+  const HEAD=360,FACT_ROW=118,TILE_H=128,tileCols=4,tileRows=Math.ceil(tiles.length/tileCols);
+  const H=HEAD+40+4*FACT_ROW+30+44+tileRows*(TILE_H+14)+30+44+(rows?rows*(chipH+chipGap):56)+(o.tm.length?70:20)+110;
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;
+  const c=cv.getContext("2d");
+  c.fillStyle=CC.bg;c.fillRect(0,0,W,H);
+  // header: turf stripes and yard lines
+  for(let i=0;i<W;i+=108){c.fillStyle=(i/108)%2?CC.field2:CC.field;c.fillRect(i,0,108,HEAD)}
+  c.fillStyle="rgba(255,255,255,.14)";for(let i=215;i<W;i+=216)c.fillRect(i,0,2,HEAD);
+  c.textBaseline="alphabetic";
+  c.fillStyle=CC.ink;c.globalAlpha=.8;c.font=`700 28px ${CF.disp}`;
+  const lab=`NFL CAREER SIM · ${POS[pos].name.toUpperCase()}`;
+  if("letterSpacing" in c)c.letterSpacing="4px";
+  c.fillText(lab,P,P+28);c.globalAlpha=1;
+  if("letterSpacing" in c)c.letterSpacing="0px";
+  c.font=`800 210px ${CF.disp}`;c.fillStyle=CC.gold;c.textAlign="right";c.fillText(String(o.num),W-P,P+190);c.textAlign="left";
+  const nm=o.n.toUpperCase();const ns=fitFont(c,nm,800,CF.disp,128,IW-260);
+  c.fillStyle=CC.ink;c.font=`800 ${ns}px ${CF.disp}`;c.fillText(nm,P,P+40+ns*.85);
+  const vs=fitFont(c,o.vd.toUpperCase(),800,CF.disp,64,IW-60);
+  c.fillStyle=CC.gold;c.font=`800 ${vs}px ${CF.disp}`;c.fillText(o.vd.toUpperCase(),P,HEAD-48);
+  let y=HEAD+40;
+  // facts, two columns
+  const colW=(IW-40)/2;
+  facts.forEach((f,i)=>{
+    const fx=P+(i%2)*(colW+40),fy=y+Math.floor(i/2)*FACT_ROW;
+    c.fillStyle=CC.muted;c.font=`700 24px ${CF.disp}`;if("letterSpacing" in c)c.letterSpacing="3px";c.fillText(f[0].toUpperCase(),fx,fy+24);if("letterSpacing" in c)c.letterSpacing="0px";
+    c.fillStyle=f[0]==="Super Bowl rings"&&rings?CC.gold:CC.ink;const vsz=fitFont(c,f[1],600,CF.body,38,colW);c.font=`600 ${vsz}px ${CF.body}`;c.fillText(f[1],fx,fy+66);
+    if(f[2]){c.fillStyle=CC.muted;const ssz=fitFont(c,f[2],400,CF.body,26,colW);c.font=`400 ${ssz}px ${CF.body}`;c.fillText(f[2],fx,fy+98)}
+  });
+  y+=4*FACT_ROW+30;
+  const section=(txt)=>{c.fillStyle=CC.muted;c.font=`700 24px ${CF.disp}`;if("letterSpacing" in c)c.letterSpacing="3px";c.fillText(txt,P,y+24);if("letterSpacing" in c)c.letterSpacing="0px";c.fillStyle=CC.line;c.fillRect(P,y+38,IW,2);y+=60};
+  section("NFL CAREER STATS");
+  const tw=(IW-(tileCols-1)*14)/tileCols;
+  tiles.forEach((tl,i)=>{
+    const tx=P+(i%tileCols)*(tw+14),ty=y+Math.floor(i/tileCols)*(TILE_H+14);
+    c.fillStyle=CC.tile;c.beginPath();c.roundRect?c.roundRect(tx,ty,tw,TILE_H,10):c.rect(tx,ty,tw,TILE_H);c.fill();
+    const v=typeof tl[1]==="number"?tl[1].toLocaleString():tl[1];
+    c.fillStyle=CC.ink;const s=fitFont(c,v,600,CF.mono,48,tw-36);c.font=`600 ${s}px ${CF.mono}`;c.fillText(v,tx+18,ty+64);
+    c.fillStyle=CC.muted;c.font=`400 26px ${CF.body}`;c.fillText(tl[0],tx+18,ty+104);
+  });
+  y+=tileRows*(TILE_H+14)+16;
+  section("TROPHY CASE");
+  if(!chips.length){c.fillStyle=CC.muted;c.font=`400 30px ${CF.body}`;c.fillText("No major awards",P,y+34);y+=56}
+  else{
+    let cx=P;c.font=`700 28px ${CF.disp}`;
+    chips.forEach(ch=>{
+      const txt=ch.toUpperCase(),w=c.measureText(txt).width+40;
+      if(cx>P&&cx+w>P+IW){cx=P;y+=chipH+chipGap}
+      const ring=/Champion|Super Bowl MVP|MVP$/.test(ch);
+      c.fillStyle=ring?CC.gold:CC.tile;c.beginPath();c.roundRect?c.roundRect(cx,y,w,chipH,8):c.rect(cx,y,w,chipH);c.fill();
+      c.fillStyle=ring?CC.goldInk:CC.ink;c.fillText(txt,cx+20,y+38);cx+=w+chipGap;
+    });
+    y+=chipH+chipGap;
+  }
+  if(o.tm.length){
+    y+=14;c.fillStyle=CC.muted;const tl="Teams: "+o.tm.map(k=>TEAMS[k]).join(" → ");
+    const s=fitFont(c,tl,400,CF.body,28,IW);c.font=`400 ${s}px ${CF.body}`;c.fillText(tl,P,y+28);y+=56;
+  }
+  // footer
+  c.fillStyle=CC.panel;c.fillRect(0,H-90,W,90);
+  c.fillStyle=CC.gold;c.font=`800 34px ${CF.disp}`;c.fillText("PLAY YOUR OWN CAREER",P,H-34);
+  c.fillStyle=CC.ink;c.font=`600 28px ${CF.mono}`;c.textAlign="right";
+  c.fillText(IS_HOSTED?location.host:"nfl-career-sim.vercel.app",W-P,H-36);c.textAlign="left";
+  return cv;
+}
+let cardBlobPromise=null;
+function prepareCardImage(){
+  if(!S||S.phase!=="retired")return;
+  const o=buildSummary();
+  cardBlobPromise=Promise.all(CARD_FONTS.map(f=>document.fonts?document.fonts.load(f).catch(()=>{}):null))
+    .then(()=>new Promise((res,rej)=>drawCareerCard(o).toBlob(b=>b?res(b):rej(new Error("no image")),"image/png")));
+  cardBlobPromise.catch(()=>{});
+}
+function cardFileName(){return (S.name||"career").replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").toLowerCase()+"-nfl-career.png"}
+function showCardPreview(msg){
+  const st=document.getElementById("shareStatus"), box=document.getElementById("cardPreview");
+  if(!cardBlobPromise)prepareCardImage();
+  cardBlobPromise.then(b=>{
+    if(box){box.hidden=false;box.innerHTML=`<img alt="Career card for ${esc(S.name)}" src="${URL.createObjectURL(b)}">`}
+    if(st)st.textContent=msg;
+  }).catch(()=>{if(st)st.textContent="Could not draw the card image in this browser."});
+}
+function copyCardImage(){
+  const st=document.getElementById("shareStatus");
+  if(!cardBlobPromise)prepareCardImage();
+  const blocked="Copying images is blocked here. Press and hold (or right-click) the card below to copy or save it.";
+  try{
+    if(!navigator.clipboard||!window.ClipboardItem)throw new Error("unsupported");
+    navigator.clipboard.write([new ClipboardItem({"image/png":cardBlobPromise})])
+      .then(()=>{if(st)st.textContent="Card image copied. Paste it into a text, story or group chat."},()=>showCardPreview(blocked));
+  }catch(e){showCardPreview(blocked)}
+}
+function saveCardImage(){
+  const st=document.getElementById("shareStatus");
+  if(!cardBlobPromise)prepareCardImage();
+  cardBlobPromise.then(b=>{
+    const file=new File([b],cardFileName(),{type:"image/png"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      return navigator.share({files:[file],title:`${S.name}'s NFL career`}).then(()=>{if(st)st.textContent="Shared."}).catch(e=>{if(e&&e.name!=="AbortError")showCardPreview("Press and hold the card below to save it.")});
+    }
+    const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=cardFileName();document.body.appendChild(a);a.click();a.remove();
+    if(st)st.textContent="Card image saved to your downloads.";
+  }).catch(()=>showCardPreview("Press and hold (or right-click) the card below to save it."));
+}
+
 function retiredView(){
   const sum=buildSummary(), link=SHARE_BASE+"#"+encodeSummary(sum);
   return `${shareCard(sum)}
    <div class="panel"><div class="panel-head"><div><div class="label">Share your career</div><h2>Show it off</h2></div></div>
-     <div class="actions"><button class="btn primary" data-act="copylink" id="btnCopyLink">Copy share link</button><button class="btn" data-act="copytext" id="btnCopyText">Copy text summary</button>
+     <div class="actions"><button class="btn primary" data-act="copyimg" id="btnCopyImg">Copy card image</button>${IS_HOSTED?`<button class="btn" data-act="saveimg" id="btnSaveImg">Save image</button>`:""}<button class="btn" data-act="copylink" id="btnCopyLink">Copy share link</button><button class="btn" data-act="copytext" id="btnCopyText">Copy text summary</button>
        <button class="btn" data-act="newnow" id="btnNewNow">Start a new career</button></div>
      <p id="shareStatus" class="muted" style="margin:10px 0 6px;min-height:1.5em" aria-live="polite"></p>
      <input type="text" id="shareLink" readonly value="${esc(link)}" style="width:100%;font-family:var(--f-mono);font-size:.8rem" aria-label="Share link">
+     <div id="cardPreview" class="card-preview" hidden></div>
      <p class="muted" style="margin:8px 0 0;font-size:.88rem">${IS_HOSTED?"Anyone with the link sees this career card and can start their own.":"The link opens this career card for anyone who can view this page. To let friends open it, turn on link sharing from the page's Share menu."}</p></div>
    <div class="panel"><div class="panel-head"><h2>NFL career</h2></div>${seasonTable(S.nflLog,false)}</div>
    <div class="panel"><div class="panel-head"><h2>College · ${esc(S.college.name)}</h2></div>${seasonTable(S.colLog,true)}</div>`;
@@ -827,6 +966,8 @@ document.addEventListener("click",e=>{
     case "new": if(uiArmed==="new"){uiArmed=null;wipe();S=null;render();window.scrollTo(0,0);return}else{uiArmed="new";render();return}
     case "newnow": wipe(); S=null; render(); window.scrollTo(0,0); return;
     case "copylink": copyText(document.getElementById("shareLink").value,"shareStatus","Link copied. Paste it anywhere to share your career card."); return;
+    case "copyimg": copyCardImage(); return;
+    case "saveimg": saveCardImage(); return;
     case "copytext": copyText(summaryText(buildSummary())+"\n"+document.getElementById("shareLink").value,"shareStatus","Summary copied."); return;
     case "sharednew": SHARED=null; try{history.replaceState(null,"",location.pathname+location.search)}catch(e){} render(); window.scrollTo(0,0); return;
   }
